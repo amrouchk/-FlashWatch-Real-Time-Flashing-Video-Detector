@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Flash Detection Debug</title>
+  <style>
+    #alert { font-weight: bold; color: gray; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+<h2>Flashing Video Detector (Debug Mode)</h2>
+<video id="video" width="480" controls muted crossorigin="anonymous">
+  <source src="videoplayback.mp4" type="video/mp4">
+</video>
+
+<div id="alert">Waiting for video...</div>
+<canvas id="canvas" style="display:none;"></canvas>
+
+<script>
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const alert = document.getElementById("alert");
+
+let lastBrightness = null;
+let flashTimestamps = [];
+
+function getBrightness() {
+  const width = 160, height = 90;
+  canvas.width = width;
+  canvas.height = height;
+
+  try {
+    ctx.drawImage(video, 0, 0, width, height);
+    const frame = ctx.getImageData(0, 0, width, height).data;
+
+    let sum = 0;
+    for (let i = 0; i < frame.length; i += 4) {
+      const r = frame[i], g = frame[i + 1], b = frame[i + 2];
+      const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+      sum += brightness;
+    }
+
+    return sum / (frame.length / 4);
+  } catch (e) {
+    console.warn("Frame read failed:", e);
+    return null;
+  }
+}
+
+function detectFlashes() {
+  const brightness = getBrightness();
+  if (brightness === null) {
+    alert.textContent = "⚠️ Unable to read video frame (CORS or video not ready)";
+    alert.style.color = "orange";
+    return;
+  }
+
+  const now = Date.now();
+  if (lastBrightness !== null && Math.abs(brightness - lastBrightness) > 20) {
+    flashTimestamps.push(now);
+  }
+
+  flashTimestamps = flashTimestamps.filter(t => now - t < 1000);
+  lastBrightness = brightness;
+
+  if (flashTimestamps.length > 3) {
+    alert.textContent = "⚠️ Flashing detected!";
+    alert.style.color = "red";
+  } else {
+    alert.textContent = "No flashing detected.";
+    alert.style.color = "green";
+  }
+}
+
+// Ensure playback
+video.muted = true;
+
+video.addEventListener("canplay", () => {
+  console.log("Video is ready to play.");
+  video.play();
+});
+
+video.addEventListener("playing", () => {
+  alert.textContent = "Analyzing video...";
+  setInterval(detectFlashes, 100);
+});
+</script>
+
+</body>
+</html>
