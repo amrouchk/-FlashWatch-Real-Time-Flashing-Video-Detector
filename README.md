@@ -46,7 +46,7 @@ You can test it locally by serving the project with a local server (see below).
 
 ## 📦 Files
 
-- `test.html` – Main detection page with video and alert UI
+- `flash.html` – Main detection page with video and alert UI
 - `videoplayback.mp4` – Sample video (replace with your own)
 - `canvas` – Hidden canvas used for frame analysis
 
